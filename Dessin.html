@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Croquis Cotes"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>Croquis Cotes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout : outil plein écran, barre haute, feuille quadrillée au centre, barre d'outils en bas */
+:root{
+  --paper:#f6f7f4; --grid:#dfe4dc; --grid2:#c9d1c6; --ink:#1d2b3a; --muted:#66727e;
+  --accent:#e2621b; --shape:#1d2b3a; --bar:#ffffff; --line:#d5dad3;
+  --f-ui:"IBM Plex Sans Condensed",system-ui,sans-serif; --f-num:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141a20; --grid:#1f2830; --grid2:#2b3741; --ink:#e7ecef; --muted:#93a0ab;
+  --accent:#ff8a45; --shape:#e7ecef; --bar:#1b232b; --line:#2c3843; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#141a20; --grid:#1f2830; --grid2:#2b3741; --ink:#e7ecef; --muted:#93a0ab;
+  --accent:#ff8a45; --shape:#e7ecef; --bar:#1b232b; --line:#2c3843; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none}
+header,nav{background:var(--bar);padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:8px;padding-block:8px;border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.02em;flex:1}
+h1 span{color:var(--accent)}
+select,.hb{font:600 14px var(--f-ui);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-height:36px}
+.hb{cursor:pointer}
+#wrap{flex:1;position:relative;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#hint{position:absolute;left:12px;right:12px;top:10px;text-align:center;font-size:13px;color:var(--muted);pointer-events:none}
+nav{display:flex;gap:4px;padding-block:6px;border-top:1px solid var(--line);justify-content:space-between}
+nav button{flex:1;min-width:0;border:0;background:transparent;color:var(--muted);font:600 12px var(--f-ui);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:10px;cursor:pointer}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav button.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bar);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+#sheet label{font-size:14px;color:var(--muted);font-weight:600}
+.row{display:flex;gap:8px;align-items:center}
+#val{flex:1;min-width:0;font:600 26px var(--f-num);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+#unitTag{font:600 18px var(--f-num);color:var(--muted)}
+.btn{flex:1;font:700 15px var(--f-ui);border-radius:10px;padding:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+#err{color:var(--accent);font-size:13px;min-height:0}
+h1{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb{display:inline-flex;align-items:center;justify-content:center;padding:6px 8px}
+.hb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.hb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+nav button:disabled{opacity:.35}
+#lockBar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--accent);color:#fff;font:700 13px var(--f-ui);padding:6px 12px;border-radius:20px;pointer-events:none;white-space:nowrap}
+/* Accueil chantiers */
+#home{position:fixed;inset:0;z-index:20;background:var(--paper);overflow-y:auto;padding-block:max(16px,env(safe-area-inset-top,0px)) 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.homeIn{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.homeTop{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.homeTop h2{font-size:26px;margin:0;font-weight:700}
+.homeTop h2 span{color:var(--accent)}
+.homeTop p{margin:0;color:var(--muted);font-size:14px}
+#newForm{background:var(--bar);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+#newForm label{font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+#newForm input{font:500 16px var(--f-ui);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+#list{display:flex;flex-direction:column;gap:10px}
+.card{display:flex;align-items:center;gap:12px;background:var(--bar);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;text-align:left;color:var(--ink);font-family:var(--f-ui);width:100%}
+.card .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.card b{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .meta{font:500 12px var(--f-num);color:var(--muted)}
+.card .lk{color:var(--accent);font-weight:700}
+.del{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:8px 10px;font:600 13px var(--f-ui);cursor:pointer;flex:none}
+.del.sure{background:var(--accent);color:#fff;border-color:var(--accent)}
+.empty{color:var(--muted);text-align:center;padding:24px 0;font-size:15px}
+/* Image */
+#imgView{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--paper) 94%,transparent);display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#imgView img{max-width:100%;max-height:70vh;border:1px solid var(--line);border-radius:8px;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
+#imgView p{margin:0;text-align:center;color:var(--ink);font-size:15px;max-width:40ch}
+</style>
+
+<section id="home">
+  <div class="homeIn">
+    <div class="homeTop"><div><h2>Croquis <span>Cotes</span></h2><p>Mes chantiers</p></div>
+      <button class="btn pri" id="newBtn" style="flex:none">+ Nouveau</button></div>
+    <form id="newForm" hidden>
+      <label for="fNom">Chantier<input id="fNom" placeholder="Ex. Réfection toiture"></label>
+      <label for="fAdr">Adresse<input id="fAdr" placeholder="Ex. 12 rue du Marché, Haguenau"></label>
+      <label for="fCli">Client<input id="fCli" placeholder="Ex. M. Weber"></label>
+      <div id="fErr" style="color:var(--accent);font-size:13px"></div>
+      <div class="row"><button type="button" class="btn" id="fCancel">Annuler</button><button type="submit" class="btn pri">Créer et dessiner</button></div>
+    </form>
+    <div id="list"></div>
+  </div>
+</section>
+<div id="imgView" hidden>
+  <img id="imgOut" alt="Croquis du chantier">
+  <p>Appuie longuement sur l'image, puis « Enregistrer dans Photos ».</p>
+  <button class="btn pri" id="imgClose" style="flex:none;min-width:160px">Fermer</button>
+</div>
+<header>
+  <button class="hb" id="back" title="Mes chantiers"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <h1 id="title">Chantier</h1>
+  <select id="unit" aria-label="Unité"><option>cm</option><option>mm</option><option>m</option></select>
+  <button class="hb" id="lock" title="Verrouiller"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path id="lockPath" d="M8 11V7a4 4 0 018 0"/></svg></button>
+  <button class="hb" id="img" title="Image"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+  <button class="hb" id="fit" title="Recentrer"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+</header>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hint"></div>
+  <div id="lockBar" hidden>Visualisation · verrouillé</div>
+  <div id="sheet" hidden>
+    <label id="sheetLbl" for="val">Longueur du côté</label>
+    <div class="row"><input id="val" inputmode="decimal" autocomplete="off"><span id="unitTag">cm</span></div>
+    <div id="err"></div>
+    <div class="row">
+      <button class="btn" id="rm">Retirer</button>
+      <button class="btn" id="cancel">Annuler</button>
+      <button class="btn pri" id="ok">Valider</button>
+    </div>
+  </div>
+</div>
+<nav id="tools">
+  <button data-t="draw" class="on"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>Dessin</button>
+  <button data-t="dim"><svg viewBox="0 0 24 24"><path d="M3 8v8M21 8v8M3 12h18M7 10l-4 2 4 2M17 10l4 2-4 2"/></svg>Cote</button>
+  <button data-t="text"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13"/></svg>Texte</button>
+  <button data-t="pan"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg>Bouger</button>
+  <button data-t="erase"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>Gomme</button>
+  <button data-a="undo" id="undoB"><svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10h-3"/></svg>Retour</button>
+  <button data-a="redo" id="redoB"><svg viewBox="0 0 24 24"><path d="M15 7l5 5-5 5M20 12H9a5 5 0 000 10h3"/></svg>Avancer</button>
+</nav>
+
+<script>
+const cv=document.getElementById('c'),wrap=document.getElementById('wrap');let ctx=cv.getContext('2d');
+const hint=document.getElementById('hint'),unitSel=document.getElementById('unit');
+let W=0,H=0,DPR=1,view={s:2.2,ox:60,oy:80},tool='draw';
+let shapes=[],hist=[],fut=[],unit='cm',chantiers=[],cur=null,locked=false,prevTool='draw';
+const HINTS={draw:'Dessine un carré, un triangle, un rond ou un trait',dim:'Touche un côté pour noter sa mesure',text:'Touche l’endroit où mettre une note',pan:'Glisse pour déplacer, pince pour zoomer',erase:'Touche une forme pour l’effacer'};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// ---------- stockage ----------
+function saveAll(){try{localStorage.setItem('chantiers',JSON.stringify(chantiers))}catch(e){}}
+function save(){if(cur){cur.shapes=shapes;cur.unit=unit;cur.updated=Date.now()}saveAll();updBtns()}
+function load(){try{const d=JSON.parse(localStorage.getItem('chantiers'));if(Array.isArray(d)){chantiers=d;return true}}catch(e){}
+  try{const o=JSON.parse(localStorage.getItem('croquis'));if(o&&o.shapes){chantiers=[{id:Date.now(),nom:'Mon premier croquis',adresse:'',client:'',shapes:o.shapes,unit:o.unit||'cm',updated:Date.now()}];return true}}catch(e){}return false}
+function push(){hist.push(JSON.stringify(shapes));if(hist.length>80)hist.shift();fut=[]}
+function updBtns(){document.getElementById('undoB').disabled=!hist.length;document.getElementById('redoB').disabled=!fut.length}
+
+// ---------- géométrie ----------
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const toS=p=>[p[0]*view.s+view.ox,p[1]*view.s+view.oy];
+const toW=p=>[(p[0]-view.ox)/view.s,(p[1]-view.oy)/view.s];
+function rectPts(r){const c=Math.cos(r.a),s=Math.sin(r.a);return[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>{x*=r.w/2;y*=r.h/2;return[r.cx+x*c-y*s,r.cy+x*s+y*c]})}
+function polyOf(sh){return sh.type==='rect'?rectPts(sh):sh.pts}
+function edges(sh){ // {a,b,key}
+  if(sh.type==='rect'){const p=rectPts(sh);return[[0,'w'],[1,'h'],[2,'w'],[3,'h']].map(([i,k])=>({a:p[i],b:p[(i+1)%4],key:k,i}))}
+  if(sh.type==='tri')return[0,1,2].map(i=>({a:sh.pts[i],b:sh.pts[(i+1)%3],key:i,i}));
+  if(sh.type==='line')return[{a:sh.pts[0],b:sh.pts[1],key:0,i:0}];
+  if(sh.type==='poly')return sh.pts.slice(1).map((p,i)=>({a:sh.pts[i],b:p,key:i,i}));
+  return[];
+}
+function segD(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;let t=l?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l:0;t=Math.max(0,Math.min(1,t));return dist(p,[a[0]+t*dx,a[1]+t*dy])}
+function hull(P){P=P.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];for(const p of P){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}for(const p of P.slice().reverse()){while(up.length>1&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}return lo.slice(0,-1).concat(up.slice(0,-1))}
+function dp(P,e){if(P.length<3)return P;const a=P[0],b=P[P.length-1];let m=0,k=0;for(let i=1;i<P.length-1;i++){const d=segD(P[i],a,b);if(d>m){m=d;k=i}}if(m>e){const l=dp(P.slice(0,k+1),e),r=dp(P.slice(k),e);return l.slice(0,-1).concat(r)}return[a,b]}
+
+// ---------- reconnaissance ----------
+function recognize(P){
+  if(P.length<4)return null;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of P){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])}
+  const D=Math.hypot(x1-x0,y1-y0);if(D<15)return null;
+  const W_=P.map(toW);
+  const closed=dist(P[0],P[P.length-1])<0.28*D;
+  if(!closed){
+    const a=P[0],b=P[P.length-1],ch=dist(a,b);let m=0;for(const p of P)m=Math.max(m,segD(p,a,b));
+    if(m<0.12*ch)return{type:'line',pts:[toW(a),toW(b)],m:{}};
+    return{type:'poly',pts:dp(P,0.05*D).map(toW),m:{}};
+  }
+  const cx=W_.reduce((s,p)=>s+p[0],0)/W_.length,cy=W_.reduce((s,p)=>s+p[1],0)/W_.length;
+  const ds=W_.map(p=>Math.hypot(p[0]-cx,p[1]-cy)),mean=ds.reduce((a,b)=>a+b,0)/ds.length;
+  const ratio=Math.sqrt(ds.reduce((s,d)=>s+(d-mean)**2,0)/ds.length)/mean;
+  // coins
+  let v=dp(P.concat([P[0]]),0.07*D).slice(0,-1);
+  let changed=true;while(changed&&v.length>2){changed=false;for(let i=0;i<v.length;i++){const p=v[(i-1+v.length)%v.length],q=v[i],r=v[(i+1)%v.length];const a1=Math.atan2(p[1]-q[1],p[0]-q[0]),a2=Math.atan2(r[1]-q[1],r[0]-q[0]);let ang=Math.abs(a1-a2);if(ang>Math.PI)ang=2*Math.PI-ang;if(ang>2.6||dist(p,q)<0.12*D){v.splice(i,1);changed=true;break}}}
+  const n=v.length;
+  if(ratio<0.085||(ratio<0.14&&n!==3&&n!==4)||n<3){
+    // cercle : centre de la boîte
+    const c=toW([(x0+x1)/2,(y0+y1)/2]);return{type:'circle',cx:c[0],cy:c[1],r:((x1-x0)+(y1-y0))/4/view.s,m:{}};
+  }
+  if(n===3)return{type:'tri',pts:v.map(toW),m:{}};
+  // rectangle de surface minimale
+  const h=hull(W_);let best=null;
+  for(let i=0;i<h.length;i++){const a=Math.atan2(h[(i+1)%h.length][1]-h[i][1],h[(i+1)%h.length][0]-h[i][0]);const r=fitRect(W_,a);if(!best||r.w*r.h<best.w*best.h)best=r}
+  let a=best.a%(Math.PI/2);if(a>Math.PI/4)a-=Math.PI/2;if(a<-Math.PI/4)a+=Math.PI/2;
+  if(Math.abs(a)<0.21)a=0;
+  const r=fitRect(W_,a);return{type:'rect',...r,m:{}};
+}
+function fitRect(P,a){const c=Math.cos(-a),s=Math.sin(-a);let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of P){const x=p[0]*c-p[1]*s,y=p[0]*s+p[1]*c;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}const mx=(x0+x1)/2,my=(y0+y1)/2,C=Math.cos(a),S=Math.sin(a);return{cx:mx*C-my*S,cy:mx*S+my*C,w:x1-x0,h:y1-y0,a}}
+
+// ---------- appliquer une cote ----------
+function applyDim(sh,key,val){
+  if(sh.type==='rect'){sh.m[key]=val;sh[key]=val;return true}
+  if(sh.type==='circle'){sh.m.d=val;sh.r=val/2;return true}
+  if(sh.type==='line'){const[a,b]=sh.pts,mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,l=dist(a,b)||1,k=val/l/2;sh.pts=[[mx+(a[0]-mx)*k*2,my+(a[1]-my)*k*2],[mx+(b[0]-mx)*k*2,my+(b[1]-my)*k*2]];sh.m[0]=val;return true}
+  if(sh.type==='poly'){sh.m[key]=val;return true}
+  if(sh.type==='tri'){
+    const P=sh.pts,cur=[0,1,2].map(i=>dist(P[i],P[(i+1)%3]));
+    const others=[0,1,2].filter(i=>i!==key&&sh.m[i]!=null);
+    if(!others.length){const cx=(P[0][0]+P[1][0]+P[2][0])/3,cy=(P[0][1]+P[1][1]+P[2][1])/3,k=val/cur[key];sh.pts=P.map(p=>[cx+(p[0]-cx)*k,cy+(p[1]-cy)*k]);sh.m[key]=val;return true}
+    const L=cur.slice();for(let i=0;i<3;i++)if(sh.m[i]!=null)L[i]=sh.m[i];
+    if(others.length===1){const k=val/cur[key];for(let i=0;i<3;i++)if(i!==key&&sh.m[i]==null)L[i]=cur[i]*k}
+    L[key]=val;
+    const[c,a,b]=L; // AB, BC, CA
+    if(a+b<=c||a+c<=b||b+c<=a)return 'Ces trois mesures ne forment pas un triangle.';
+    const A=P[0],dir=Math.atan2(P[1][1]-A[1],P[1][0]-A[0]);
+    const side=Math.sign((P[1][0]-A[0])*(P[2][1]-A[1])-(P[1][1]-A[1])*(P[2][0]-A[0]))||1;
+    const angA=Math.acos(Math.max(-1,Math.min(1,(b*b+c*c-a*a)/(2*b*c))));
+    sh.pts=[A,[A[0]+c*Math.cos(dir),A[1]+c*Math.sin(dir)],[A[0]+b*Math.cos(dir+side*angA),A[1]+b*Math.sin(dir+side*angA)]];
+    sh.m[key]=val;return true;
+  }
+}
+
+// ---------- dessin ----------
+function resize(){DPR=window.devicePixelRatio||1;W=wrap.clientWidth;H=wrap.clientHeight;cv.width=W*DPR;cv.height=H*DPR;draw()}
+const fmt=v=>(Math.round(v*100)/100).toString().replace('.',',');
+function niceStep(){for(const s of[0.1,0.5,1,5,10,50,100,500,1000,5000,10000])if(s*view.s>=22)return s;return 10000}
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle=css('--paper');ctx.fillRect(0,0,W,H);
+  const st=niceStep(),g1=css('--grid'),g2=css('--grid2');
+  const w0=toW([0,0]),w1=toW([W,H]);
+  for(let k=0;k<2;k++){const step=k?st*5:st;ctx.strokeStyle=k?g2:g1;ctx.lineWidth=1;ctx.beginPath();
+    for(let x=Math.floor(w0[0]/step)*step;x<=w1[0];x+=step){const X=Math.round(x*view.s+view.ox)+.5;ctx.moveTo(X,0);ctx.lineTo(X,H)}
+    for(let y=Math.floor(w0[1]/step)*step;y<=w1[1];y+=step){const Y=Math.round(y*view.s+view.oy)+.5;ctx.moveTo(0,Y);ctx.lineTo(W,Y)}ctx.stroke()}
+  // échelle
+  ctx.fillStyle=css('--muted');ctx.strokeStyle=css('--muted');ctx.lineWidth=2;const sl=st*5*view.s;
+  ctx.beginPath();ctx.moveTo(14,H-14);ctx.lineTo(14+sl,H-14);ctx.moveTo(14,H-19);ctx.lineTo(14,H-9);ctx.moveTo(14+sl,H-19);ctx.lineTo(14+sl,H-9);ctx.stroke();
+  ctx.font='600 12px '+css('--f-num');ctx.fillText(fmt(st*5)+' '+unit,18+sl,H-10);
+  for(const sh of shapes)drawShape(sh);
+  if(stroke.length>1){ctx.strokeStyle=css('--accent');ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();stroke.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke()}
+}
+function drawShape(sh){
+  const ink=css('--shape'),acc=css('--accent');
+  ctx.strokeStyle=ink;ctx.lineWidth=2.2;ctx.lineJoin='round';ctx.lineCap='round';
+  if(sh.type==='text'){const p=toS([sh.x,sh.y]);ctx.fillStyle=ink;ctx.font='600 16px '+css('--f-ui');ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(sh.t,p[0],p[1]);return}
+  if(sh.type==='circle'){const c=toS([sh.cx,sh.cy]),r=sh.r*view.s;ctx.beginPath();ctx.arc(c[0],c[1],r,0,7);ctx.stroke();
+    ctx.setLineDash([4,4]);ctx.lineWidth=1;ctx.strokeStyle=acc;ctx.beginPath();ctx.moveTo(c[0]-r,c[1]);ctx.lineTo(c[0]+r,c[1]);ctx.stroke();ctx.setLineDash([]);
+    label(c[0],c[1]-10,0,sh.m.d!=null?'Ø '+fmt(sh.m.d)+' '+unit:'Ø ?',sh.m.d!=null);return}
+  const P=polyOf(sh).map(toS);ctx.beginPath();P.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));if(sh.type==='rect'||sh.type==='tri')ctx.closePath();ctx.stroke();
+  // cotes
+  const cen=P.reduce((s,p)=>[s[0]+p[0]/P.length,s[1]+p[1]/P.length],[0,0]);
+  for(const e of edges(sh)){
+    if(sh.type==='rect'&&(e.i===2||e.i===1))continue;
+    const v=sh.m[e.key];if(v==null)continue;
+    const a=toS(e.a),b=toS(e.b);let nx=-(b[1]-a[1]),ny=b[0]-a[0];const l=Math.hypot(nx,ny)||1;nx/=l;ny/=l;
+    const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;if(sh.type!=='line'&&sh.type!=='poly'&&(nx*(mx-cen[0])+ny*(my-cen[1])<0)){nx=-nx;ny=-ny}
+    if(sh.type==='line'||sh.type==='poly'){if(ny>0){nx=-nx;ny=-ny}}
+    const o=16,A=[a[0]+nx*o,a[1]+ny*o],B=[b[0]+nx*o,b[1]+ny*o];
+    ctx.strokeStyle=acc;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(a[0]+nx*4,a[1]+ny*4);ctx.lineTo(a[0]+nx*(o+5),a[1]+ny*(o+5));ctx.moveTo(b[0]+nx*4,b[1]+ny*4);ctx.lineTo(b[0]+nx*(o+5),b[1]+ny*(o+5));ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();
+    for(const[p,q]of[[A,B],[B,A]]){const an=Math.atan2(q[1]-p[1],q[0]-p[0]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[0]+8*Math.cos(an+.35),p[1]+8*Math.sin(an+.35));ctx.lineTo(p[0]+8*Math.cos(an-.35),p[1]+8*Math.sin(an-.35));ctx.closePath();ctx.fillStyle=acc;ctx.fill()}
+    let ang=Math.atan2(b[1]-a[1],b[0]-a[0]);if(ang>Math.PI/2)ang-=Math.PI;if(ang<-Math.PI/2)ang+=Math.PI;
+    label((A[0]+B[0])/2+nx*11,(A[1]+B[1])/2+ny*11,ang,fmt(v)+' '+unit,true);
+  }
+}
+function label(x,y,ang,t,ok){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.font='600 13px '+css('--f-num');ctx.textAlign='center';ctx.textBaseline='middle';const w=ctx.measureText(t).width+8;ctx.fillStyle=css('--paper');ctx.fillRect(-w/2,-9,w,18);ctx.fillStyle=ok?css('--accent'):css('--muted');ctx.fillText(t,0,1);ctx.restore()}
+
+function bounds(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;const add=p=>{x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])};
+  for(const sh of shapes){if(sh.type==='circle'){add([sh.cx-sh.r,sh.cy-sh.r]);add([sh.cx+sh.r,sh.cy+sh.r])}else if(sh.type==='text'){add([sh.x,sh.y]);add([sh.x+sh.t.length*9/view.s,sh.y])}else polyOf(sh).forEach(add)}
+  return x0>x1?null:[x0,y0,x1,y1]}
+function fitTo(ax,ay,aw,ah,pad){const b=bounds();if(!b)return;const[x0,y0,x1,y1]=b,bw=Math.max(x1-x0,1e-3),bh=Math.max(y1-y0,1e-3);
+  view.s=Math.min((aw-pad*2)/bw,(ah-pad*2)/bh);view.ox=ax+aw/2-(x0+x1)/2*view.s;view.oy=ay+ah/2-(y0+y1)/2*view.s}
+function fit(){fitTo(0,0,W,H,56);draw()}
+
+// ---------- saisie ----------
+let stroke=[],ptrs=new Map(),pinch=null,panLast=null;
+function hitEdge(p){let best=null,bd=24;for(const sh of shapes){if(sh.type==='circle'){const c=toS([sh.cx,sh.cy]),d=Math.abs(dist(p,c)-sh.r*view.s);if(d<bd){bd=d;best={sh,key:'d'}}}else for(const e of edges(sh)){const d=segD(p,toS(e.a),toS(e.b));if(d<bd){bd=d;best={sh,key:e.key}}}}return best}
+function hitShape(p){const e=hitEdge(p);if(e)return e.sh;for(const sh of shapes)if(sh.type==='text'){const q=toS([sh.x,sh.y]);if(p[0]>q[0]-6&&p[0]<q[0]+sh.t.length*9+6&&Math.abs(p[1]-q[1])<14)return sh}return null}
+const pos=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+cv.addEventListener('pointerdown',e=>{
+  cv.setPointerCapture(e.pointerId);const p=pos(e);ptrs.set(e.pointerId,p);
+  if(ptrs.size===2){stroke=[];const[a,b]=[...ptrs.values()];pinch={d:dist(a,b),m:[(a[0]+b[0])/2,(a[1]+b[1])/2],s:view.s,ox:view.ox,oy:view.oy};draw();return}
+  if(tool==='draw')stroke=[p];
+  else if(tool==='pan')panLast=p;
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;const p=pos(e);ptrs.set(e.pointerId,p);
+  if(pinch&&ptrs.size===2){const[a,b]=[...ptrs.values()],d=dist(a,b),m=[(a[0]+b[0])/2,(a[1]+b[1])/2],k=d/pinch.d;view.s=pinch.s*k;view.ox=m[0]-(pinch.m[0]-pinch.ox)*k;view.oy=m[1]-(pinch.m[1]-pinch.oy)*k;draw();return}
+  if(tool==='draw'&&stroke.length){stroke.push(p);draw()}
+  else if(tool==='pan'&&panLast){view.ox+=p[0]-panLast[0];view.oy+=p[1]-panLast[1];panLast=p;draw()}
+});
+function up(e){
+  if(!ptrs.has(e.pointerId))return;const p=pos(e);ptrs.delete(e.pointerId);
+  if(pinch){if(ptrs.size===0)pinch=null;return}
+  if(tool==='draw'&&stroke.length){const sh=recognize(stroke);stroke=[];if(sh){push();shapes.push(sh);save()}draw()}
+  else if(tool==='pan')panLast=null;
+  else if(tool==='dim'){const h=hitEdge(p);if(h)openSheet(h)}
+  else if(tool==='text'){openText(toW(p))}
+  else if(tool==='erase'){const sh=hitShape(p);if(sh){push();shapes=shapes.filter(s=>s!==sh);save();draw()}}
+}
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);stroke=[];pinch=null;draw()});
+cv.addEventListener('wheel',e=>{e.preventDefault();const p=pos(e),k=Math.exp(-e.deltaY*0.0015);view.ox=p[0]-(p[0]-view.ox)*k;view.oy=p[1]-(p[1]-view.oy)*k;view.s*=k;draw()},{passive:false});
+
+// ---------- feuille de saisie ----------
+const sheet=document.getElementById('sheet'),val=document.getElementById('val'),err=document.getElementById('err'),lbl=document.getElementById('sheetLbl');
+let target=null;
+function openSheet(h){target={...h,mode:'dim'};const sh=h.sh;
+  lbl.textContent=sh.type==='circle'?'Diamètre du rond':sh.type==='rect'?(h.key==='w'?'Largeur':'Hauteur'):'Longueur du côté';
+  const cur=sh.type==='circle'?sh.m.d:sh.m[h.key];val.value=cur!=null?fmt(cur):'';val.inputMode='decimal';
+  document.getElementById('unitTag').textContent=unit;document.getElementById('rm').hidden=cur==null;err.textContent='';sheet.hidden=false;setTimeout(()=>val.focus(),50)}
+function openText(w){target={mode:'text',w};lbl.textContent='Note';val.value='';val.inputMode='text';document.getElementById('unitTag').textContent='';document.getElementById('rm').hidden=true;err.textContent='';sheet.hidden=false;setTimeout(()=>val.focus(),50)}
+function closeSheet(){sheet.hidden=true;target=null;val.blur()}
+document.getElementById('cancel').onclick=closeSheet;
+document.getElementById('rm').onclick=()=>{if(!target)return;push();const sh=target.sh;if(sh.type==='circle')delete sh.m.d;else delete sh.m[target.key];save();closeSheet();draw()};
+function submit(){
+  if(!target)return;
+  if(target.mode==='text'){const t=val.value.trim();if(t){push();shapes.push({type:'text',x:target.w[0],y:target.w[1],t});save()}closeSheet();draw();return}
+  const v=parseFloat(val.value.replace(',','.'));if(!(v>0)){err.textContent='Entre une mesure supérieure à 0.';return}
+  const before=JSON.stringify(shapes);const r=applyDim(target.sh,target.key,v);
+  if(r!==true){shapes=JSON.parse(before);err.textContent=r;return}
+  hist.push(before);fut=[];save();closeSheet();fit();
+}
+document.getElementById('ok').onclick=submit;val.addEventListener('keydown',e=>{if(e.key==='Enter')submit();if(e.key==='Escape')closeSheet()});
+
+// ---------- outils ----------
+document.getElementById('tools').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.a==='undo'){if(hist.length){fut.push(JSON.stringify(shapes));shapes=JSON.parse(hist.pop());save();draw()}return}
+  if(b.dataset.a==='redo'){if(fut.length){hist.push(JSON.stringify(shapes));shapes=JSON.parse(fut.pop());save();draw()}return}
+  setTool(b.dataset.t)});
+function setTool(t){tool=t;document.querySelectorAll('nav button[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));hint.textContent=HINTS[t]}
+document.getElementById('fit').onclick=fit;
+unitSel.onchange=()=>{unit=unitSel.value;save();draw()};
+
+// ---------- verrou ----------
+const navEl=document.getElementById('tools'),lockBtn=document.getElementById('lock');
+function setLock(on){locked=on;if(cur){cur.locked=on;saveAll()}
+  closeSheet();lockBtn.classList.toggle('on',on);document.getElementById('lockPath').setAttribute('d',on?'M8 11V7a4 4 0 018 0v4':'M8 11V7a4 4 0 018 0');
+  navEl.hidden=on;unitSel.disabled=on;document.getElementById('lockBar').hidden=!on;
+  if(on){prevTool=tool;tool='pan';hint.textContent='';}else setTool(prevTool);
+  requestAnimationFrame(()=>{resize();fit()})}
+lockBtn.onclick=()=>setLock(!locked);
+
+// ---------- image ----------
+document.getElementById('img').onclick=()=>{
+  const OW=1600,head=130,b=bounds();let OH=1200;
+  if(b){const r=(b[3]-b[1]+1)/(b[2]-b[0]+1);OH=Math.round(Math.min(2400,Math.max(900,(OW-160)*r+head+160)))}
+  const off=document.createElement('canvas');off.width=OW;off.height=OH;
+  const sv={ctx,W,H,DPR,v:{...view}};ctx=off.getContext('2d');W=OW;H=OH;DPR=1;
+  fitTo(0,head,OW,OH-head,90);draw();
+  ctx.fillStyle=css('--paper');ctx.fillRect(0,0,OW,head);ctx.fillStyle=css('--accent');ctx.fillRect(0,head-4,OW,4);
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillStyle=css('--ink');ctx.font='700 44px '+css('--f-ui');
+  ctx.fillText(cur.nom||cur.client||cur.adresse||'Chantier',40,64);
+  ctx.fillStyle=css('--muted');ctx.font='500 26px '+css('--f-ui');
+  ctx.fillText([cur.adresse,cur.client].filter(Boolean).join('  ·  ')+'   —   '+new Date().toLocaleDateString('fr-FR'),40,104);
+  const url=off.toDataURL('image/png');
+  ctx=sv.ctx;W=sv.W;H=sv.H;DPR=sv.DPR;view=sv.v;draw();
+  document.getElementById('imgOut').src=url;document.getElementById('imgView').hidden=false};
+document.getElementById('imgClose').onclick=()=>document.getElementById('imgView').hidden=true;
+
+// ---------- chantiers ----------
+const home=document.getElementById('home'),list=document.getElementById('list'),form=document.getElementById('newForm');
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderHome(){
+  chantiers.sort((a,b)=>b.updated-a.updated);
+  if(!chantiers.length){list.innerHTML='<div class="empty">Aucun chantier pour l’instant.<br>Appuie sur « + Nouveau » pour commencer.</div>';return}
+  list.innerHTML=chantiers.map(c=>{const t=c.nom||c.client||c.adresse,sub=[c.nom&&c.adresse,(c.nom||c.adresse)&&c.client].filter(Boolean);
+    const n=c.shapes.filter(s=>s.type!=='text').length;
+    return `<div class="card" data-id="${c.id}" role="button" tabindex="0"><div class="info"><b>${esc(t)}</b>${sub.map(s=>`<small>${esc(s)}</small>`).join('')}
+    <span class="meta">${n} forme${n>1?'s':''} · ${new Date(c.updated).toLocaleDateString('fr-FR')}${c.locked?' · <span class="lk">terminé</span>':''}</span></div>
+    <button class="del" data-del="${c.id}">Supprimer</button></div>`}).join('')}
+list.addEventListener('click',e=>{const d=e.target.closest('[data-del]');
+  if(d){e.stopPropagation();if(d.classList.contains('sure')){chantiers=chantiers.filter(c=>String(c.id)!==d.dataset.del);saveAll();renderHome()}else{d.classList.add('sure');d.textContent='Confirmer ?';setTimeout(()=>{if(d.isConnected){d.classList.remove('sure');d.textContent='Supprimer'}},3000)}return}
+  const c=e.target.closest('.card');if(c)openChantier(chantiers.find(x=>String(x.id)===c.dataset.id))});
+list.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))e.target.click()});
+document.getElementById('newBtn').onclick=()=>{form.hidden=false;document.getElementById('fNom').focus()};
+document.getElementById('fCancel').onclick=()=>{form.hidden=true;form.reset();document.getElementById('fErr').textContent=''};
+form.addEventListener('submit',e=>{e.preventDefault();const g=id=>document.getElementById(id).value.trim();
+  const c={id:Date.now(),nom:g('fNom'),adresse:g('fAdr'),client:g('fCli'),shapes:[],unit:'cm',updated:Date.now()};
+  if(!c.nom&&!c.adresse&&!c.client){document.getElementById('fErr').textContent='Remplis au moins un des trois champs.';return}
+  chantiers.push(c);saveAll();form.reset();form.hidden=true;document.getElementById('fErr').textContent='';openChantier(c)});
+function openChantier(c){cur=c;shapes=c.shapes;unit=c.unit||'cm';unitSel.value=unit;hist=[];fut=[];updBtns();
+  document.getElementById('title').textContent=c.nom||c.client||c.adresse;home.hidden=true;setTool('draw');
+  setLock(!!c.locked)}
+document.getElementById('back').onclick=()=>{closeSheet();if(cur)save();cur=null;renderHome();home.hidden=false};
+
+// ---------- démarrage ----------
+if(!load()){chantiers=[{id:1,nom:'Exemple – Salle de bain',adresse:'12 rue du Marché, Haguenau',client:'M. Weber',unit:'cm',updated:Date.now(),shapes:[
+  {type:'rect',cx:60,cy:40,w:120,h:80,a:0,m:{w:120,h:80}},
+  {type:'circle',cx:175,cy:40,r:15,m:{d:30}},
+  {type:'tri',pts:[[0,140],[90,140],[0,200]],m:{0:90,2:60}},
+  {type:'text',x:110,y:160,t:'Exemple — efface et dessine'}]}];saveAll()}
+renderHome();
+new ResizeObserver(()=>resize()).observe(wrap);
+</script>
+
+</body></html>
